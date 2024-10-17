@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8stimeservice2-deployment
+  labels:
+    app: k8stimeservice2
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: k8stimeservice2
+  template:
+    metadata:
+      labels:
+        app: k8stimeservice2
+    spec:
+      containers:
+        - name: k8stimeservice2-container
+          image: k8stimeservice:v1 # Use the locally built image
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: shared-logs
+              mountPath: /app/logs # Mount the log folder for shared access
+
+        - name: fluentd-sidecar
+          image: fluent/fluentd:v1.12-debian-1
+          args: ["-c", "/fluentd/etc/fluent.conf", "-v"]
+          volumeMounts:
+            - name: shared-logs # Fluentd sidecar will also mount the shared log folder
+              mountPath: /fluentd/logs
+            - name: fluentd-config
+              mountPath: /fluentd/etc/fluent.conf
+              subPath: fluent.conf
+
+      volumes: # Define the shared logs and fluentd config volumes here
+        - name: shared-logs
+          emptyDir: {} # This creates an empty directory shared between containers
+        - name: fluentd-config
+          configMap:
+            name: fluentd-configmap
